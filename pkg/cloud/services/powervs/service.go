@@ -34,12 +34,13 @@ var _ PowerVS = &Service{}
 
 // Service holds the PowerVS Service specific information.
 type Service struct {
-	session        *ibmpisession.IBMPISession
-	instanceClient *instance.IBMPIInstanceClient
-	networkClient  *instance.IBMPINetworkClient
-	imageClient    *instance.IBMPIImageClient
-	jobClient      *instance.IBMPIJobClient
-	dhcpClient     *instance.IBMPIDhcpClient
+	session                    *ibmpisession.IBMPISession
+	instanceClient             *instance.IBMPIInstanceClient
+	networkClient              *instance.IBMPINetworkClient
+	imageClient                *instance.IBMPIImageClient
+	jobClient                  *instance.IBMPIJobClient
+	dhcpClient                 *instance.IBMPIDhcpClient
+	networkSecurityGroupClient *instance.IBMPINetworkSecurityGroupClient
 }
 
 // ServiceOptions holds the PowerVS Service Options specific information.
@@ -205,4 +206,10 @@ func (s *Service) GetDatacenterCapabilities(zone string) (map[string]bool, error
 		return nil, fmt.Errorf("failed to get datacenter capabilities for zone: %s", zone)
 	}
 	return datacenter.Payload.Capabilities, nil
+}
+
+// ActionNetworkSecurityGroup enables the default security group in the Workspace.
+func (s *Service) ActionNetworkSecurityGroup(options *models.NetworkSecurityGroupsAction) error {
+	s.networkSecurityGroupClient.Action(options)
+	return nil
 }

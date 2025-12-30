@@ -211,6 +211,11 @@ const (
 	COSInstanceReadyCondition clusterv1beta1.ConditionType = "COSInstanceCreated"
 	// COSInstanceReconciliationFailedReason used when an error occurs during COS instance reconciliation.
 	COSInstanceReconciliationFailedReason = "COSInstanceCreationFailed"
+
+	// NetworkSecurityGroupReadyCondition reports on the successful reconciliation of a Power VS network security group.
+	NetworkSecurityGroupReadyCondition clusterv1beta1.ConditionType = "NetworkSecurityGroupReady"
+	// NetworkSecurityGroupReconciliationFailedReason used when an error occurs during network security group reconciliation.
+	NetworkSecurityGroupReconciliationFailedReason = "NetworkSecurityGroupReconciliationFailed"
 )
 
 const (
@@ -358,6 +363,15 @@ const (
 
 	// COSInstanceDeletingV1Beta2Reason surfaces when the COS instance is being deleted.
 	COSInstanceDeletingV1Beta2Reason = clusterv1beta1.DeletingV1Beta2Reason
+
+	// NetworkSecurityGroupReadyV1Beta2Condition reports on the successful reconciliation of a PowerVS network.
+	NetworkSecurityGroupReadyV1Beta2Condition = "NetworkSecurityGroupReady"
+
+	// NetworkSecurityGroupReadyV1Beta2Reason surfaces when PowerVS network security group is ready.
+	NetworkSecurityGroupReadyV1Beta2Reason = clusterv1beta1.ReadyV1Beta2Reason
+
+	// NetworkSecurityGroupNotReadyV1Beta2Reason surfaces when the PowerVS network is not ready.
+	NetworkSecurityGroupNotReadyV1Beta2Reason = clusterv1beta1.NotReadyV1Beta2Reason
 )
 
 // IBMPowerVSImage's Ready condition and corresponding reasons that will be used in v1Beta2 API version.

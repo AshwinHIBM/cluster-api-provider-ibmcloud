@@ -367,8 +367,39 @@ func (r *IBMPowerVSClusterReconciler) reconcilePowerVSResources(ctx context.Cont
 		})
 		return
 	}
+
+	// reconcile network security group
+	log.Info("Reconciling network security group")
+	if networkSecurityGroupEnabled, err := clusterScope.ReconcileNetworkSecurityGroup(ctx); err != nil {
+		powerVSCluster.updateCondition(clusterv1beta1.Condition{
+			Status:   corev1.ConditionFalse,
+			Type:     infrav1.NetworkSecurityGroupReadyCondition,
+			Reason:   infrav1.NetworkSecurityGroupReconciliationFailedReason,
+			Severity: clusterv1beta1.ConditionSeverityError,
+			Message:  err.Error(),
+		})
+		v1beta2conditions.Set(powerVSCluster.cluster, metav1.Condition{
+			Type:    infrav1.NetworkSecurityGroupReadyV1Beta2Condition,
+			Status:  metav1.ConditionFalse,
+			Reason:  infrav1.NetworkSecurityGroupNotReadyV1Beta2Reason,
+			Message: err.Error(),
+		})
+		ch <- reconcileResult{reconcile.Result{}, fmt.Errorf("failed to reconcile network security group: %w", err)}
+		return
+	} else if networkSecurityGroupEnabled {
+		powerVSCluster.updateCondition(clusterv1beta1.Condition{
+			Status: corev1.ConditionTrue,
+			Type:   infrav1.NetworkSecurityGroupReadyCondition,
+		})
+		v1beta2conditions.Set(powerVSCluster.cluster, metav1.Condition{
+			Type:   infrav1.NetworkSecurityGroupReadyV1Beta2Condition,
+			Status: metav1.ConditionTrue,
+			Reason: infrav1.NetworkSecurityGroupReadyV1Beta2Reason,
+		})
+		return
+	}
 	// Do not want to block the reconciliation of other resources like setting up TG and COS, so skipping the requeue and only logging the info.
-	log.Info("PowerVS network creation is pending")
+	log.Info("PowerVS network security group creation is pending")
 }
 
 func (r *IBMPowerVSClusterReconciler) reconcileVPCResources(ctx context.Context, clusterScope *scope.PowerVSClusterScope, powerVSCluster *powerVSCluster, ch chan reconcileResult, wg *sync.WaitGroup) {

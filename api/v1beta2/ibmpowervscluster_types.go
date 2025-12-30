@@ -142,6 +142,10 @@ type IBMPowerVSClusterSpec struct {
 	// Ignition defined options related to the bootstrapping systems where Ignition is used.
 	// +optional
 	Ignition *Ignition `json:"ignition,omitempty"`
+
+	// NetworkSecurityGroup defines the the network security group.
+	// +optional
+	NetworkSecurityGroup *NetworkSecurityGroup `json:"networkSecurityGroup,omitempty"`
 }
 
 // Ignition defines options related to the bootstrapping systems where Ignition is used.
@@ -196,6 +200,8 @@ type TransitGatewayStatus struct {
 	PowerVSConnection *ResourceReference `json:"powerVSConnection,omitempty"`
 }
 
+const NetworkSecurityGroupStatusEnabled = "Network"
+
 // IBMPowerVSClusterStatus defines the observed state of IBMPowerVSCluster.
 type IBMPowerVSClusterStatus struct {
 	// ready is true when the provider resource is ready.
@@ -231,6 +237,9 @@ type IBMPowerVSClusterStatus struct {
 
 	// loadBalancers reference to IBM Cloud VPC Loadbalancer.
 	LoadBalancers map[string]VPCLoadBalancerStatus `json:"loadBalancers,omitempty"`
+
+	// networkSecurityGroup is a reference to Power VS Network Security Group
+	NetworkSecurityGroup NetworkSecurityGroupState `json:"networkSecurityGroup,omitempty"`
 
 	// Conditions defines current service state of the IBMPowerVSCluster.
 	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
@@ -334,6 +343,9 @@ type CosInstance struct {
 
 	// bucketRegion is IBM cloud COS bucket region
 	BucketRegion string `json:"bucketRegion,omitempty"`
+}
+
+type NetworkSecurityGroup struct {
 }
 
 // GetConditions returns the observations of the operational state of the IBMPowerVSCluster resource.

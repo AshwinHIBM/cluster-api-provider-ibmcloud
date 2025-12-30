@@ -522,6 +522,11 @@ spec:
                     minLength: 1
                     type: string
                 type: object
+              networkSecurityGroup:
+                description: |-
+                  NetworkSecurityGroup is the PowerVS network security group.
+                properties:
+                type: object
               resourceGroup:
                 description: |-
                   resourceGroup name under which the resources will be created.
@@ -1108,6 +1113,10 @@ spec:
                   id:
                     description: id represents the id of the resource.
                     type: string
+                type: object
+              networkSecurityGroup:
+                description: networkSecurityGroup is the PowerVS network security group.
+                properties:
                 type: object
               ready:
                 default: false

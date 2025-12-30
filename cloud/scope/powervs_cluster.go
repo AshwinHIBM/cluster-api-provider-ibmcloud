@@ -421,6 +421,11 @@ func (s *PowerVSClusterScope) SetTransitGatewayStatus(id *string, controllerCrea
 	}
 }
 
+// SetTransitGatewayStatus sets the status of NetworkSecurityGroup.
+func (s *PowerVSClusterScope) SetNetworkSecurityGroupStatus(networkSecurityGroup infrav1.NetworkSecurityGroupState) {
+	s.IBMPowerVSCluster.Status.NetworkSecurityGroup = networkSecurityGroup
+}
+
 // TODO: Can we use generic here.
 
 // SetStatus set the IBMPowerVSCluster status for provided ResourceType.
@@ -1078,6 +1083,18 @@ func (s *PowerVSClusterScope) createDHCPServer(ctx context.Context) (*string, er
 	log.Info("DHCP Server network details", "details", *dhcpServer.Network)
 	s.SetStatus(ctx, infrav1.ResourceTypeNetwork, infrav1.ResourceReference{ID: dhcpServer.Network.ID, ControllerCreated: ptr.To(true)})
 	return dhcpServer.ID, nil
+}
+
+// enableNetworkSecurityGroup enables the network security group.
+func (s *PowerVSClusterScope) enableNetworkSecurityGroup(ctx context.Context) error {
+	log := ctrl.LoggerFrom(ctx)
+	var networkSecurityGroupActionParams models.NetworkSecurityGroupsAction
+	networkSecurityGroupActionParams.Action = ptr.To("enabled")
+	log.Info("Enabling network security group")
+	if err := s.IBMPowerVSClient.ActionNetworkSecurityGroup(&networkSecurityGroupActionParams); err != nil {
+		return fmt.Errorf("failed to enable network security group: %w", err)
+	}
+	return nil
 }
 
 // ReconcileVPC reconciles VPC.
@@ -2926,4 +2943,20 @@ func (s *PowerVSClusterScope) bucketRegion() string {
 		return *vpcDetails.Region
 	}
 	return ""
+}
+
+// ReconcileNetworkSecurityGroup reconciles network security group
+func (s *PowerVSClusterScope) ReconcileNetworkSecurityGroup(ctx context.Context) (bool, error) {
+	log := ctrl.LoggerFrom(ctx)
+	var (
+		err error
+	)
+	err = s.enableNetworkSecurityGroup(ctx)
+	if err != nil {
+		return false, fmt.Errorf("error enabling Network security group: %w", err)
+	}
+
+	log.Info("Enabled network security group")
+	s.SetNetworkSecurityGroupStatus(infrav1.NetworkSecurityGroupStateEnabled)
+	return true, nil
 }

@@ -560,6 +560,11 @@ spec:
                             minLength: 1
                             type: string
                         type: object
+                      networkSecurityGroup:
+                        description: |-
+                          networkSecurityGroup is the PowerVS NetworkSecurityGroup.
+                        properties:
+                        type: object
                       resourceGroup:
                         description: |-
                           resourceGroup name under which the resources will be created.

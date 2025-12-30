@@ -45,4 +45,5 @@ type PowerVS interface {
 	WithClients(options ServiceOptions) *Service
 	GetNetworkByName(networkName string) (*models.NetworkReference, error)
 	GetDatacenterCapabilities(zone string) (map[string]bool, error)
+	ActionNetworkSecurityGroup(*models.NetworkSecurityGroupsAction) error
 }

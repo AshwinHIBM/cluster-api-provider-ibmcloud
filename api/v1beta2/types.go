@@ -205,6 +205,16 @@ var (
 	VPCLoadBalancerStateDeletePending = VPCLoadBalancerState("delete_pending")
 )
 
+// VPCLoadBalancerState describes the state of the load balancer.
+type NetworkSecurityGroupState string
+
+var (
+	// NetworkSecurityGroupStateEnabled is the string representing the network security group in enabled state.
+	NetworkSecurityGroupStateEnabled = NetworkSecurityGroupState("enabled")
+	// NetworkSecurityGroupStateDisabled is the string representing the network security group in disabled state.
+	NetworkSecurityGroupStateDisabled = NetworkSecurityGroupState("disabled")
+)
+
 // VPCSubnetState describes the state of a VPC Subnet.
 type VPCSubnetState string
 
@@ -282,6 +292,8 @@ var (
 	ResourceTypePublicGateway = ResourceType("publicGateway")
 	// ResourceTypeCustomImage is a VPC Custom Image.
 	ResourceTypeCustomImage = ResourceType("customImage")
+	// ResourceTypeNetworkSecurityGroup is a Network Security Group.
+	ResourceTypeNetworkSecurityGroup = ResourceType("networkSecurityGroup")
 )
 
 const (
