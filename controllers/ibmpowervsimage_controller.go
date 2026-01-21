@@ -18,16 +18,13 @@ package controllers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/IBM-Cloud/power-go-client/power/models"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	kerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 
@@ -41,7 +38,6 @@ import (
 	v1beta1conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions"         //nolint:staticcheck
 	v1beta2conditions "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/conditions/v1beta2" //nolint:staticcheck
 	v1beta1patch "sigs.k8s.io/cluster-api/util/deprecated/v1beta1/patch"                   //nolint:staticcheck
-	"sigs.k8s.io/cluster-api/util/finalizers"
 
 	infrav1 "sigs.k8s.io/cluster-api-provider-ibmcloud/api/v1beta2"
 	"sigs.k8s.io/cluster-api-provider-ibmcloud/cloud/scope"
@@ -61,75 +57,76 @@ type IBMPowerVSImageReconciler struct {
 
 // Reconcile implements controller runtime Reconciler interface and handles reconciliation logic for IBMPowerVSImage.
 func (r *IBMPowerVSImageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, reterr error) {
-	log := ctrl.LoggerFrom(ctx)
+	// log := ctrl.LoggerFrom(ctx)
 
-	log.Info("Reconciling IBMPowerVSImage")
-	defer log.Info("Finished reconciling IBMPowerVSImage")
+	// log.Info("Reconciling IBMPowerVSImage")
+	// defer log.Info("Finished reconciling IBMPowerVSImage")
 
-	// Fetch the IBMPowerVSImage.
-	ibmPowerVSImage := &infrav1.IBMPowerVSImage{}
-	err := r.Client.Get(ctx, req.NamespacedName, ibmPowerVSImage)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			log.Info("IBMPowerVSImage not found")
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, fmt.Errorf("failed to get IBMPowerVSImage: %w", err)
-	}
+	// // Fetch the IBMPowerVSImage.
+	// ibmPowerVSImage := &infrav1.IBMPowerVSImage{}
+	// err := r.Client.Get(ctx, req.NamespacedName, ibmPowerVSImage)
+	// if err != nil {
+	// 	if apierrors.IsNotFound(err) {
+	// 		log.Info("IBMPowerVSImage not found")
+	// 		return ctrl.Result{}, nil
+	// 	}
+	// 	return ctrl.Result{}, fmt.Errorf("failed to get IBMPowerVSImage: %w", err)
+	// }
 
-	// Add finalizer first if not set to avoid the race condition between init and delete.
-	if finalizerAdded, err := finalizers.EnsureFinalizer(ctx, r.Client, ibmPowerVSImage, infrav1.IBMPowerVSImageFinalizer); err != nil || finalizerAdded {
-		return ctrl.Result{}, err
-	}
+	// // Add finalizer first if not set to avoid the race condition between init and delete.
+	// if finalizerAdded, err := finalizers.EnsureFinalizer(ctx, r.Client, ibmPowerVSImage, infrav1.IBMPowerVSImageFinalizer); err != nil || finalizerAdded {
+	// 	return ctrl.Result{}, err
+	// }
 
-	var cluster *infrav1.IBMPowerVSCluster
-	scopeParams := scope.PowerVSImageScopeParams{
-		Client:          r.Client,
-		IBMPowerVSImage: ibmPowerVSImage,
-		ServiceEndpoint: r.ServiceEndpoint,
-	}
+	// var cluster *infrav1.IBMPowerVSCluster
+	// scopeParams := scope.PowerVSImageScopeParams{
+	// 	Client:          r.Client,
+	// 	IBMPowerVSImage: ibmPowerVSImage,
+	// 	ServiceEndpoint: r.ServiceEndpoint,
+	// }
 
-	// Externally managed clusters might not be available during image deletion. Get the cluster only when image is still not deleted.
-	if ibmPowerVSImage.DeletionTimestamp.IsZero() {
-		cluster, err = scope.GetClusterByName(ctx, r.Client, ibmPowerVSImage.Namespace, ibmPowerVSImage.Spec.ClusterName)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		scopeParams.Zone = cluster.Spec.Zone
-	}
+	// // Externally managed clusters might not be available during image deletion. Get the cluster only when image is still not deleted.
+	// if ibmPowerVSImage.DeletionTimestamp.IsZero() {
+	// 	cluster, err = scope.GetClusterByName(ctx, r.Client, ibmPowerVSImage.Namespace, ibmPowerVSImage.Spec.ClusterName)
+	// 	if err != nil {
+	// 		return ctrl.Result{}, err
+	// 	}
+	// 	scopeParams.Zone = cluster.Spec.Zone
+	// }
 
-	// Initialize the patch helper
-	patchHelper, err := v1beta1patch.NewHelper(ibmPowerVSImage, r.Client)
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
-	}
+	// // Initialize the patch helper
+	// patchHelper, err := v1beta1patch.NewHelper(ibmPowerVSImage, r.Client)
+	// if err != nil {
+	// 	return ctrl.Result{}, fmt.Errorf("failed to init patch helper: %w", err)
+	// }
 
-	// Always attempt to Patch the IBMPowerVSImage object and status after each reconciliation.
-	defer func() {
-		if err := patchIBMPowerVSImage(ctx, patchHelper, ibmPowerVSImage); err != nil {
-			reterr = kerrors.NewAggregate([]error{reterr, err})
-		}
-	}()
+	// // Always attempt to Patch the IBMPowerVSImage object and status after each reconciliation.
+	// defer func() {
+	// 	if err := patchIBMPowerVSImage(ctx, patchHelper, ibmPowerVSImage); err != nil {
+	// 		reterr = kerrors.NewAggregate([]error{reterr, err})
+	// 	}
+	// }()
 
-	// Create the scope
-	imageScope, err := scope.NewPowerVSImageScope(ctx, scopeParams)
-	if err != nil {
-		if errors.Is(err, scope.ErrServiceInsanceNotInActiveState) {
-			v1beta2conditions.Set(imageScope.IBMPowerVSImage, metav1.Condition{
-				Type:   infrav1.WorkspaceReadyV1Beta2Condition,
-				Status: metav1.ConditionFalse,
-				Reason: infrav1.WorkspaceNotReadyV1Beta2Reason,
-			})
-		}
-		return ctrl.Result{}, fmt.Errorf("failed to create scope: %w", err)
-	}
+	// // Create the scope
+	// imageScope, err := scope.NewPowerVSImageScope(ctx, scopeParams)
+	// if err != nil {
+	// 	if errors.Is(err, scope.ErrServiceInsanceNotInActiveState) {
+	// 		v1beta2conditions.Set(imageScope.IBMPowerVSImage, metav1.Condition{
+	// 			Type:   infrav1.WorkspaceReadyV1Beta2Condition,
+	// 			Status: metav1.ConditionFalse,
+	// 			Reason: infrav1.WorkspaceNotReadyV1Beta2Reason,
+	// 		})
+	// 	}
+	// 	return ctrl.Result{}, fmt.Errorf("failed to create scope: %w", err)
+	// }
 
-	// Handle deleted clusters.
-	if !ibmPowerVSImage.DeletionTimestamp.IsZero() {
-		return r.reconcileDelete(ctx, imageScope)
-	}
+	// // Handle deleted clusters.
+	// if !ibmPowerVSImage.DeletionTimestamp.IsZero() {
+	// 	return r.reconcileDelete(ctx, imageScope)
+	// }
 
-	return r.reconcile(ctx, cluster, imageScope)
+	// return r.reconcile(ctx, cluster, imageScope)
+	return ctrl.Result{}, nil
 }
 
 func (r *IBMPowerVSImageReconciler) reconcile(ctx context.Context, cluster *infrav1.IBMPowerVSCluster, imageScope *scope.PowerVSImageScope) (ctrl.Result, error) {
