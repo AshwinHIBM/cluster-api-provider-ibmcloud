@@ -19,13 +19,11 @@ package webhooks
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strconv"
 
 	regionUtil "github.com/ppc64le-cloud/powervs-utils"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -248,18 +246,19 @@ func validateIBMPowerVSClusterCreateInfraPrereq(cluster *infrav1.IBMPowerVSClust
 }
 
 func validateAdditionalListenerSelector(newCluster, oldCluster *infrav1.IBMPowerVSCluster) (allErrs field.ErrorList) {
-	newLoadBalancerListeners := map[string]metav1.LabelSelector{}
-	for _, loadbalancer := range newCluster.Spec.LoadBalancers {
-		for _, additionalListener := range loadbalancer.AdditionalListeners {
-			newLoadBalancerListeners[fmt.Sprintf("%d-%s", additionalListener.Port, *additionalListener.Protocol)] = additionalListener.Selector
-		}
-	}
-	for _, loadbalancer := range oldCluster.Spec.LoadBalancers {
-		for _, additionalListener := range loadbalancer.AdditionalListeners {
-			if selector, ok := newLoadBalancerListeners[fmt.Sprintf("%d-%s", additionalListener.Port, *additionalListener.Protocol)]; ok && !reflect.DeepEqual(selector, additionalListener.Selector) {
-				allErrs = append(allErrs, field.Forbidden(field.NewPath("selector"), "Selector is immutable"))
-			}
-		}
-	}
-	return allErrs
+	// newLoadBalancerListeners := map[string]metav1.LabelSelector{}
+	// for _, loadbalancer := range newCluster.Spec.LoadBalancers {
+	// 	for _, additionalListener := range loadbalancer.AdditionalListeners {
+	// 		newLoadBalancerListeners[fmt.Sprintf("%d-%s", additionalListener.Port, *additionalListener.Protocol)] = additionalListener.Selector
+	// 	}
+	// }
+	// for _, loadbalancer := range oldCluster.Spec.LoadBalancers {
+	// 	for _, additionalListener := range loadbalancer.AdditionalListeners {
+	// 		if selector, ok := newLoadBalancerListeners[fmt.Sprintf("%d-%s", additionalListener.Port, *additionalListener.Protocol)]; ok && !reflect.DeepEqual(selector, additionalListener.Selector) {
+	// 			allErrs = append(allErrs, field.Forbidden(field.NewPath("selector"), "Selector is immutable"))
+	// 		}
+	// 	}
+	// }
+	// return allErrs
+	return nil
 }
