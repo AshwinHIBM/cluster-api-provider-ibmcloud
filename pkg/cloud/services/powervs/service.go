@@ -116,7 +116,7 @@ func (s *Service) GetImage(id string) (*models.Image, error) {
 
 // GetAllImage returns all the images in the Power VS service instance.
 func (s *Service) GetAllImage() (*models.Images, error) {
-	return s.imageClient.GetAll()
+	return s.imageClient.GetAllStockImages(false, false)
 }
 
 // DeleteImage deletes the image in the Power VS service instance.
