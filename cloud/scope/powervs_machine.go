@@ -638,25 +638,35 @@ func (m *PowerVSMachineScope) GetRawBootstrapData() ([]byte, error) {
 func getImageID(image *infrav1.IBMPowerVSResourceReference, m *PowerVSMachineScope) (*string, error) {
 	if image.ID != nil {
 		return image.ID, nil
-	} else if image.Name != nil {
-		images, err := m.GetImages()
-		if err != nil {
-			return nil, err
-		}
-		for _, img := range images.Images {
-			if *image.Name == *img.Name {
-				return img.ImageID, nil
-			}
-		}
-	} else {
+	}
+	if image.Name == nil {
 		return nil, fmt.Errorf("both image ID and image Name can't be nil")
 	}
-	return nil, fmt.Errorf("failed to find an image ID")
+	images, err := m.GetImages()
+	if err != nil {
+		return nil, err
+	}
+	stockImages, err := m.GetStockImages()
+	if err != nil {
+		return nil, err
+	}
+	images.Images = append(images.Images, stockImages.Images...)
+	for _, img := range images.Images {
+		if *image.Name == *img.Name {
+			return img.ImageID, nil
+		}
+	}
+	return nil, fmt.Errorf("image with name %q not found", *image.Name)
 }
 
 // GetImages will get list of images for the powervs service instance.
 func (m *PowerVSMachineScope) GetImages() (*models.Images, error) {
 	return m.IBMPowerVSClient.GetAllImage()
+}
+
+// GetStockImages will get list of images for the powervs service instance.
+func (m *PowerVSMachineScope) GetStockImages() (*models.Images, error) {
+	return m.IBMPowerVSClient.GetAllStockImage()
 }
 
 func getNetworkID(network infrav1.IBMPowerVSResourceReference, m *PowerVSMachineScope) (*string, error) {
