@@ -353,12 +353,19 @@ func (s *MachineScope) CreateMachine(ctx context.Context) (*models.PVMInstanceRe
 
 	// 6. Resolve Image ID
 	var imageID string
-	if machineSpec.Image.Type == infrav1.ImageSourceTypeImport {
+	switch machineSpec.Image.Type {
+	case infrav1.ImageSourceTypeImport:
 		if s.IBMPowerVSImage == nil || s.IBMPowerVSImage.Status.ImageID == "" {
 			return nil, fmt.Errorf("imported image is not ready yet")
 		}
 		imageID = s.IBMPowerVSImage.Status.ImageID
-	} else {
+	case infrav1.ImageSourceTypeStockImage:
+		imageID, err = s.getStockImageID(ctx, machineSpec.Image.StockImage)
+		if err != nil {
+			s.Recorder.Eventf(s.IBMPowerVSMachine, corev1.EventTypeWarning, "FailedRetrieveImage", "Failed stock image retrieval: %v", err)
+			return nil, fmt.Errorf("error getting image ID from stock image: %w", err)
+		}
+	default:
 		imageID, err = s.getImageID(ctx, machineSpec.Image.Reference)
 		if err != nil {
 			s.Recorder.Eventf(s.IBMPowerVSMachine, corev1.EventTypeWarning, "FailedRetrieveImage", "Failed image retrieval: %v", err)
@@ -1007,7 +1014,8 @@ func (s *MachineScope) getRawBootstrapData() ([]byte, error) {
 	return value, nil
 }
 
-// getImageID resolves an image ResourceIdentifier to a concrete image ID string.
+// getImageID resolves a Reference image ResourceIdentifier to a concrete image ID string
+// by searching the workspace's own image catalog.
 func (s *MachineScope) getImageID(ctx context.Context, image infrav1.ResourceIdentifier) (string, error) {
 	if image.ID != "" {
 		return image.ID, nil
@@ -1024,6 +1032,18 @@ func (s *MachineScope) getImageID(ctx context.Context, image infrav1.ResourceIde
 			return *img.ImageID, nil
 		}
 	}
+	return "", fmt.Errorf("image with name %q not found", image.Name)
+}
+
+// getStockImageID resolves a StockImage ResourceIdentifier to a concrete image ID string
+// by searching the IBM-provided stock catalog images.
+func (s *MachineScope) getStockImageID(ctx context.Context, image infrav1.ResourceIdentifier) (string, error) {
+	if image.ID != "" {
+		return image.ID, nil
+	}
+	if image.Name == "" {
+		return "", fmt.Errorf("stock image reference must contain either an ID or a Name")
+	}
 	stockImages, err := s.IBMPowerVSClient.ListStockImages(ctx)
 	if stockImages == nil || err != nil {
 		return "", fmt.Errorf("failed to get stock images from IBM Cloud: %w", err)
@@ -1033,7 +1053,7 @@ func (s *MachineScope) getImageID(ctx context.Context, image infrav1.ResourceIde
 			return *img.ImageID, nil
 		}
 	}
-	return "", fmt.Errorf("image with name %q not found", image.Name)
+	return "", fmt.Errorf("stock image with name %q not found", image.Name)
 }
 
 // getNetworkID resolves a network ResourceIdentifier to a concrete network ID pointer.

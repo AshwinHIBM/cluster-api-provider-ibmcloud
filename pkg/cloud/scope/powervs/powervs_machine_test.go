@@ -1430,39 +1430,13 @@ func TestGetImageID(t *testing.T) {
 		g.Expect(id).To(Equal(pvsImage + "-id"))
 	})
 
-	t.Run("returns stock image ID by name lookup when not found in custom images", func(t *testing.T) {
+	t.Run("error when image not found by name", func(t *testing.T) {
 		g := NewWithT(t)
 		setup(t)
 		t.Cleanup(teardown)
 		mockpowervs.EXPECT().ListImages(gomock.Any()).Return(&models.Images{
 			Images: []*models.ImageReference{
 				{Name: ptr.To("other-image"), ImageID: ptr.To("other-id")},
-			},
-		}, nil)
-		mockpowervs.EXPECT().ListStockImages(gomock.Any()).Return(&models.Images{
-			Images: []*models.ImageReference{
-				{Name: ptr.To("IBMi-74-05-stock"), ImageID: ptr.To("stock-image-id")},
-			},
-		}, nil)
-
-		scope := MachineScope{IBMPowerVSClient: mockpowervs}
-		id, err := scope.getImageID(context.Background(), infrav1.ResourceIdentifier{Name: "IBMi-74-05-stock"})
-		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(id).To(Equal("stock-image-id"))
-	})
-
-	t.Run("error when image not found by name in custom and stock images", func(t *testing.T) {
-		g := NewWithT(t)
-		setup(t)
-		t.Cleanup(teardown)
-		mockpowervs.EXPECT().ListImages(gomock.Any()).Return(&models.Images{
-			Images: []*models.ImageReference{
-				{Name: ptr.To("other-image"), ImageID: ptr.To("other-id")},
-			},
-		}, nil)
-		mockpowervs.EXPECT().ListStockImages(gomock.Any()).Return(&models.Images{
-			Images: []*models.ImageReference{
-				{Name: ptr.To("stock-image"), ImageID: ptr.To("stock-id")},
 			},
 		}, nil)
 
@@ -1470,23 +1444,6 @@ func TestGetImageID(t *testing.T) {
 		_, err := scope.getImageID(context.Background(), infrav1.ResourceIdentifier{Name: "missing-image"})
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring(`image with name "missing-image" not found`))
-	})
-
-	t.Run("error when ListStockImages API fails", func(t *testing.T) {
-		g := NewWithT(t)
-		setup(t)
-		t.Cleanup(teardown)
-		mockpowervs.EXPECT().ListImages(gomock.Any()).Return(&models.Images{
-			Images: []*models.ImageReference{
-				{Name: ptr.To("other-image"), ImageID: ptr.To("other-id")},
-			},
-		}, nil)
-		mockpowervs.EXPECT().ListStockImages(gomock.Any()).Return(nil, errors.New("stock images api failure"))
-
-		scope := MachineScope{IBMPowerVSClient: mockpowervs}
-		_, err := scope.getImageID(context.Background(), infrav1.ResourceIdentifier{Name: "some-image"})
-		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("failed to get stock images from IBM Cloud"))
 	})
 
 	t.Run("error when ListImages API fails", func(t *testing.T) {
@@ -1507,6 +1464,80 @@ func TestGetImageID(t *testing.T) {
 		_, err := scope.getImageID(context.Background(), infrav1.ResourceIdentifier{})
 		g.Expect(err).To(HaveOccurred())
 		g.Expect(err.Error()).To(ContainSubstring("image reference must contain either an ID or a Name"))
+	})
+}
+
+func TestGetStockImageID(t *testing.T) {
+	var (
+		mockCtrl    *gomock.Controller
+		mockpowervs *mock.MockPowerVS
+	)
+
+	setup := func(t *testing.T) {
+		t.Helper()
+		mockCtrl = gomock.NewController(t)
+		mockpowervs = mock.NewMockPowerVS(mockCtrl)
+	}
+	teardown := func() { mockCtrl.Finish() }
+
+	t.Run("returns stock image ID directly when ID is set", func(t *testing.T) {
+		g := NewWithT(t)
+		scope := MachineScope{}
+		id, err := scope.getStockImageID(context.Background(), infrav1.ResourceIdentifier{ID: "direct-stock-id"})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(id).To(Equal("direct-stock-id"))
+	})
+
+	t.Run("returns stock image ID by name lookup", func(t *testing.T) {
+		g := NewWithT(t)
+		setup(t)
+		t.Cleanup(teardown)
+		mockpowervs.EXPECT().ListStockImages(gomock.Any()).Return(&models.Images{
+			Images: []*models.ImageReference{
+				{Name: ptr.To("IBMi-74-05-stock"), ImageID: ptr.To("stock-image-id")},
+			},
+		}, nil)
+
+		scope := MachineScope{IBMPowerVSClient: mockpowervs}
+		id, err := scope.getStockImageID(context.Background(), infrav1.ResourceIdentifier{Name: "IBMi-74-05-stock"})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(id).To(Equal("stock-image-id"))
+	})
+
+	t.Run("error when stock image not found by name", func(t *testing.T) {
+		g := NewWithT(t)
+		setup(t)
+		t.Cleanup(teardown)
+		mockpowervs.EXPECT().ListStockImages(gomock.Any()).Return(&models.Images{
+			Images: []*models.ImageReference{
+				{Name: ptr.To("other-stock-image"), ImageID: ptr.To("other-stock-id")},
+			},
+		}, nil)
+
+		scope := MachineScope{IBMPowerVSClient: mockpowervs}
+		_, err := scope.getStockImageID(context.Background(), infrav1.ResourceIdentifier{Name: "missing-stock-image"})
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring(`stock image with name "missing-stock-image" not found`))
+	})
+
+	t.Run("error when ListStockImages API fails", func(t *testing.T) {
+		g := NewWithT(t)
+		setup(t)
+		t.Cleanup(teardown)
+		mockpowervs.EXPECT().ListStockImages(gomock.Any()).Return(nil, errors.New("stock images api failure"))
+
+		scope := MachineScope{IBMPowerVSClient: mockpowervs}
+		_, err := scope.getStockImageID(context.Background(), infrav1.ResourceIdentifier{Name: "some-stock-image"})
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("failed to get stock images from IBM Cloud"))
+	})
+
+	t.Run("error when stock image reference has neither ID nor Name", func(t *testing.T) {
+		g := NewWithT(t)
+		scope := MachineScope{}
+		_, err := scope.getStockImageID(context.Background(), infrav1.ResourceIdentifier{})
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("stock image reference must contain either an ID or a Name"))
 	})
 }
 
@@ -1685,6 +1716,40 @@ func TestCreateMachine(t *testing.T) {
 		scope := setupPowerVSMachineScope(clusterName, machineName, ptr.To(pvsImage+"-temp"), ptr.To(pvsNetwork), false, mockpowervs)
 		mockpowervs.EXPECT().ListInstances(gomock.Any()).Return(pvmInstances, nil)
 		mockpowervs.EXPECT().ListImages(gomock.Any()).Return(images, nil)
+		_, err := scope.CreateMachine(ctx)
+		g.Expect(err).To(HaveOccurred())
+	})
+
+	t.Run("successfully creates machine using stock catalog image by name", func(t *testing.T) {
+		g := NewWithT(t)
+		setup(t)
+		t.Cleanup(teardown)
+		scope := setupPowerVSMachineScope(clusterName, machineName, ptr.To(pvsNetwork), ptr.To(pvsNetwork), true, mockpowervs)
+		scope.IBMPowerVSMachine.Spec.Image = infrav1.IBMPowerVSMachineImage{
+			Type:       infrav1.ImageSourceTypeStockImage,
+			StockImage: infrav1.ResourceIdentifier{Name: "IBMi-74-05-stock"},
+		}
+		mockpowervs.EXPECT().ListInstances(gomock.Any()).Return(pvmInstances, nil)
+		mockpowervs.EXPECT().ListStockImages(gomock.Any()).Return(&models.Images{
+			Images: []*models.ImageReference{
+				{Name: ptr.To("IBMi-74-05-stock"), ImageID: ptr.To("stock-image-id")},
+			},
+		}, nil)
+		mockpowervs.EXPECT().CreateInstance(gomock.Any(), gomock.AssignableToTypeOf(pvmInstanceCreate)).Return(pvmInstanceList, nil)
+		_, err := scope.CreateMachine(ctx)
+		g.Expect(err).To(BeNil())
+	})
+
+	t.Run("error when stock image not found by name", func(t *testing.T) {
+		g := NewWithT(t)
+		setup(t)
+		t.Cleanup(teardown)
+		scope := setupPowerVSMachineScope(clusterName, machineName, ptr.To(pvsNetwork), ptr.To(pvsNetwork), true, mockpowervs)
+		scope.IBMPowerVSMachine.Spec.Image = infrav1.IBMPowerVSMachineImage{
+			Type:       infrav1.ImageSourceTypeStockImage,
+			StockImage: infrav1.ResourceIdentifier{Name: "missing-stock-image"},
+		}
+		mockpowervs.EXPECT().ListInstances(gomock.Any()).Return(pvmInstances, nil)
 		mockpowervs.EXPECT().ListStockImages(gomock.Any()).Return(&models.Images{}, nil)
 		_, err := scope.CreateMachine(ctx)
 		g.Expect(err).To(HaveOccurred())
@@ -3483,7 +3548,6 @@ func TestGetRawBootstrapData(t *testing.T) {
 		g.Expect(err.Error()).To(ContainSubstring("secret value key is missing"))
 	})
 }
-
 
 func TestExtractIPsFromInstance(t *testing.T) {
 	t.Run("returns empty slice when instance has no networks", func(t *testing.T) {
